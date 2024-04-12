@@ -1,0 +1,20 @@
+pluginManagement {
+    repositories {
+        
+        maven {
+            name = "lss"
+            url = "https://crystal.app.lss233.com/repositories/forgedev"
+        }
+        
+        maven {
+            name = 'MinecraftForge'
+            url = 'https://maven.minecraftforge.net/'
+        }
+        gradlePluginPortal()
+        maven { url ='https://maven.parchmentmc.org' }
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
+}
