@@ -29,10 +29,10 @@ jobs:
           cache: gradle
         
       - name: Build with Gradle Wrapper
-        run: ./gradlew assemble
+        run: ./gradlew genEclipseRuns 
 
       - name: Upload cache
         uses: actions/upload-artifact@v3
         with: 
           name: GradleCache
-          path: ~/.gradle
+          path: ~/.gradle/caches
