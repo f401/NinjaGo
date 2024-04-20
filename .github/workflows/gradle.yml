@@ -33,7 +33,7 @@ jobs:
 
       - name: Compress Cache
         run: |
-          tar -cvf compressed.tar ~/.gradle/caches --exclude=forge_gradle/assets/
+          tar -cvf compressed.tar ~/.gradle/caches --exclude=forge_gradle/assets
           xz -z compressed.tar -9
       
       - name: Upload to release
