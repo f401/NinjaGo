@@ -31,8 +31,18 @@ jobs:
       - name: Build with Gradle Wrapper
         run: ./gradlew genEclipseRuns 
 
-      - name: Upload cache
-        uses: actions/upload-artifact@v3
+      - name: Compress Cache
+        run: |
+          tar -cvf ~./gradle/caches/forge_gradle compressed.tar
+          xz -z compressed.tar -9
+      
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
         with: 
+          files: compressed.tar.xz
           name: GradleCache
-          path: ~/.gradle/caches
+          tag_name: ${{ github.run_id }}
+          body: |
+            Nothing here
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
