@@ -17,17 +17,17 @@ public class LongSwordItem extends SwordItem {
 
 			@Override
 			public int getUses() {
-				return 250;
+				return 0;
 			}
 
 			@Override
 			public float getSpeed() {
-				return 6;
+				return 0;
 			}
 
 			@Override
 			public float getAttackDamageBonus() {
-				return 6;
+				return 0];
 			}
 
 			@Override
@@ -44,7 +44,7 @@ public class LongSwordItem extends SwordItem {
 			public Ingredient getRepairIngredient() {
 				return Ingredient.EMPTY;
 			}
-		}, 3, -2.4F, new Item.Properties().setNoRepair().durability(200));
+		}, 6, -2.4F, new Item.Properties().setNoRepair().durability(250));
 		
 	}
 
