@@ -1,5 +1,8 @@
 package net.yx.ninjago.world.item;
 
+import java.util.Iterator;
+
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -12,7 +15,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 
 public class LongSwordItem extends SwordItem {
 
-	public LongSwordItem(Tier pTier) {
+	public LongSwordItem() {
 		super(new Tier() {
 
 			@Override
@@ -27,7 +30,7 @@ public class LongSwordItem extends SwordItem {
 
 			@Override
 			public float getAttackDamageBonus() {
-				return 0];
+				return 0;
 			}
 
 			@Override
@@ -51,24 +54,30 @@ public class LongSwordItem extends SwordItem {
 	@Override
 	public boolean onLeftClickEntity(ItemStack stack, Player player, Entity entity) {
 		Iterable<ItemStack> iterable = entity.getArmorSlots();
-		if (iterable != null && entity instanceof LivingEntity livingEntity) {
-			IntHelper helper = new IntHelper();
-			helper.value = 0;
-			for (ItemStack armor: iterable) {
-				if (player.getRandom().nextFloat() < 0.04F) {
-					armor.hurtAndBreak(armor.getDamageValue() / 2, livingEntity, (armorWearer) -> {
-						livingEntity.broadcastBreakEvent(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, helper.value));
-					});
-				}
-				helper.value += 1;
+		DamageSource fakeDamageSource = entity.damageSources().playerAttack(player);
+		if ((iterable != null && entity instanceof LivingEntity livingEntity)) {
+			// 检查盾牌
+			if (livingEntity instanceof Player targetPlayer && 
+			    !targetPlayer.isDamageSourceBlocked(fakeDamageSource)) {
+				return false;
+			}
+
+			class Helper {
+				int i = 0;
 			};
+			
+			Helper helper = new Helper();
+
+			for (ItemStack armor: iterable) {
+				armor.hurtAndBreak(armor.getDamageValue() / 2, livingEntity, (wearer) -> {
+					livingEntity.broadcastBreakEvent(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, helper.i));
+				});
+				helper.i += 1;
+			}
+		
 		}
 		// 继续执行
 		return false;
-	}
-
-	private static class IntHelper {
-		int value;
 	}
 
 } 
