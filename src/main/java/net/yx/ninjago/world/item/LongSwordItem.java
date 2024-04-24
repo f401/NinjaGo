@@ -69,9 +69,11 @@ public class LongSwordItem extends SwordItem {
 			Helper helper = new Helper();
 
 			for (ItemStack armor: iterable) {
-				armor.hurtAndBreak(armor.getDamageValue() / 2, livingEntity, (wearer) -> {
-					livingEntity.broadcastBreakEvent(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, helper.i));
-				});
+				if (armor != null && !armor.isEmpty()) {
+					armor.hurtAndBreak(armor.getDamageValue() / 2, livingEntity, (wearer) -> {
+						livingEntity.broadcastBreakEvent(EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, helper.i));
+					});
+				}
 				helper.i += 1;
 			}
 		

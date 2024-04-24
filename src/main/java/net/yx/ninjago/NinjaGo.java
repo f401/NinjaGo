@@ -1,15 +1,17 @@
 package net.yx.ninjago;
 
+import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.yx.ninjago.registries.*;
 
 @Mod(NinjaGo.MOD_ID)
-public class NinjaGo {
+public class NinjaGo { 
 	public static final String MOD_ID = "ninjago";
 	
 	public NinjaGo() {
-		ItemRegistry.ITEM_REGISTER.register(FMLJavaModLoadingContext.get().getModEventBus());
-		CreativeModeTabRegistry.MODE_TAB_REGISTER.register(FMLJavaModLoadingContext.get().getModEventBus());
+		IEventBus fmlBus = FMLJavaModLoadingContext.get().getModEventBus();
+		ItemRegistry.ITEM_REGISTER.register(fmlBus);
+		CreativeModeTabRegistry.MODE_TAB_REGISTER.register(fmlBus);
 	}
 }
