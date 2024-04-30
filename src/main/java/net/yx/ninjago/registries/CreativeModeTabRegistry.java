@@ -15,6 +15,9 @@ public class CreativeModeTabRegistry {
 	.withTabsBefore(CreativeModeTabs.COMBAT)
 	.icon(() -> Items.DIAMOND.getDefaultInstance())
 	.displayItems((params, output) -> {
-		output.accept(ItemRegistry.LONG_SWORD.get());
+		ItemRegistry.ITEM_REGISTER.getEntries()
+			.forEach((o) -> { 
+				output.accept(o.get());
+			});
 	}).build());
 }

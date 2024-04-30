@@ -8,6 +8,7 @@ import net.yx.ninjago.registries.*;
 @Mod(NinjaGo.MOD_ID)
 public class NinjaGo { 
 	public static final String MOD_ID = "ninjago";
+	public static final int TICKS_PER_SECONDS = 20;
 	
 	public NinjaGo() {
 		IEventBus fmlBus = FMLJavaModLoadingContext.get().getModEventBus();
