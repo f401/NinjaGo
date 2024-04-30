@@ -23,7 +23,7 @@ public class HeavyHammer extends TieredItem {
 		ItemStack mainHand = pPlayer.getMainHandItem();
 		if (pUsedHand == InteractionHand.MAIN_HAND) {
 			if (!pLevel.isClientSide) {
-				AABB areaAABB = new AABB(pPlayer.blockPosition()).deflate(2, 1, 2);
+				AABB areaAABB = new AABB(pPlayer.blockPosition()).deflate(4, 1, 4);
 				pLevel.getEntities(pPlayer, areaAABB)
 					.stream()
 					.filter((t) -> (t instanceof LivingEntity))
@@ -40,5 +40,6 @@ public class HeavyHammer extends TieredItem {
 	private static void knockbackEntity(Player sourcePlayer, LivingEntity targetEntity) {
 		Vec3 distance = targetEntity.position().vectorTo(sourcePlayer.position());
 		targetEntity.knockback(5D, distance.x, distance.z);
+		targetEntity.addDeltaMovement(new Vec3(0D, 0.3D, 0D));
 	}
 }
