@@ -2,6 +2,7 @@ package net.yx.ninjago.world.item;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -11,11 +12,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.yx.ninjago.NinjaGo;
+import net.yx.ninjago.Util;
 
 public class HeavyHammer extends TieredItem {
 
 	public HeavyHammer() {
-		super(new NinjaGoTier(), new Item.Properties().defaultDurability(250).defaultDurability(375));
+		super(new NinjaGoTier(), new Item.Properties().defaultDurability(375));
 	}
 
 	@Override
@@ -26,7 +28,7 @@ public class HeavyHammer extends TieredItem {
 				AABB areaAABB = new AABB(pPlayer.blockPosition()).deflate(4, 1, 4);
 				pLevel.getEntities(pPlayer, areaAABB)
 					.stream()
-					.filter((t) -> (t instanceof LivingEntity))
+					.filter((t) -> t instanceof LivingEntity && !Util.canShieldBlockPlayerAttack(pPlayer, t))
 					.map((t) -> ((LivingEntity) t)).toList()
 					.forEach((t) -> knockbackEntity(pPlayer, t));
 
