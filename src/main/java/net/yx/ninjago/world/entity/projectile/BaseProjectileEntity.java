@@ -8,7 +8,6 @@ import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -22,8 +21,8 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.AbstractArrow.Pickup;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -40,7 +39,8 @@ public class BaseProjectileEntity extends Projectile {
     @Nullable
     private BlockState oldBlockState;
     private boolean inGround;
-    private boolean defused;
+    protected boolean dealtDamage;
+    private float knockback;
     public int shakeTime;
     public int inGroundTicks;
 
@@ -52,7 +52,7 @@ public class BaseProjectileEntity extends Projectile {
         this.setOwner(pShooter);
         this.pickup = pShooter.isCreative() ? Pickup.CREATIVE_ONLY : Pickup.ALLOWED;
         this.inGround = false;
-        this.defused = false;
+        this.dealtDamage = false;
         this.inGroundTicks = 0;
 
         float xRotRad = this.getXRot() / 180 * (float) Math.PI;
@@ -66,20 +66,7 @@ public class BaseProjectileEntity extends Projectile {
     }
 
     @Override
-    public boolean isAttackable() {
-        return false;
-    }
-
-    @Override
     protected void defineSynchedData() {
-    }
-
-    public boolean isDefused() {
-        return defused;
-    }
-
-    protected void defuse() {
-        this.defused = true;
     }
 
     /**
@@ -105,8 +92,7 @@ public class BaseProjectileEntity extends Projectile {
 
     protected void tickInAir() {
         this.inGroundTicks = 0;
-        HitResult hitresult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity,
-                ClipContext.Block.COLLIDER);
+        HitResult hitresult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
 
         if (hitresult.getType() == HitResult.Type.ENTITY) {
             Entity targetEntity = ((EntityHitResult) hitresult).getEntity();
@@ -126,6 +112,7 @@ public class BaseProjectileEntity extends Projectile {
         Vec3 position = position();
 
         ProjectileUtil.rotateTowardsMovement(this, 0.2F);
+        // 生成在水中的粒子效果
         if (this.isInWater()) {
             for (int j = 0; j < 4; ++j) {
                 this.level().addParticle(ParticleTypes.BUBBLE, position.x - deltaMovement.x * 0.25D,
@@ -134,23 +121,17 @@ public class BaseProjectileEntity extends Projectile {
                         deltaMovement.x, deltaMovement.y, deltaMovement.z);
             }
         }
+
         this.setPos(deltaMovement.add(position));
+
         // 为下一个tick的move准备
         deltaMovement = deltaMovement.scale(getInteria());
         if (!this.isNoGravity() && !noPhysics) {
             deltaMovement = new Vec3(deltaMovement.x, deltaMovement.y - getGravity(), deltaMovement.z);
         }
-
         this.setDeltaMovement(deltaMovement);
+
         this.checkInsideBlocks();
-    }
-
-    protected float getInteria() {
-        return 0.95F;
-    }
-
-    protected float getGravity() {
-        return 0.01F;
     }
 
     @Override
@@ -173,6 +154,7 @@ public class BaseProjectileEntity extends Projectile {
             this.setYRot(yRotO);
         }
 
+        // 检查是否碰撞到了方块
         BlockPos currentBlockPos = this.blockPosition();
         BlockState blockState = this.level().getBlockState(currentBlockPos);
         Vec3 position = this.position();
@@ -188,6 +170,7 @@ public class BaseProjectileEntity extends Projectile {
             }
         }
 
+        // 在水中或细雪中，去除当前火焰效果(如果有)
         if (this.isInWaterOrRain() || blockState.is(Blocks.POWDER_SNOW)
                 || this.isInFluidType((fluidType, height) -> this.canFluidExtinguish(fluidType))) {
             this.clearFire();
@@ -223,7 +206,110 @@ public class BaseProjectileEntity extends Projectile {
         this.inGround = true;
         this.shakeTime = 7;
 
-        defuse();
+    }
+
+    @Override
+    protected void onHitEntity(EntityHitResult pResult) {
+        super.onHitEntity(pResult);
+        Entity targetEntity = pResult.getEntity();
+        Entity owner = this.getOwner();
+        DamageSource damagesource = damageSources().magic();
+        if (owner instanceof LivingEntity) {
+            ((LivingEntity) owner).setLastHurtMob(targetEntity);
+        }
+        this.dealtDamage = true;
+
+        boolean isEnderman = targetEntity.getType() == EntityType.ENDERMAN;
+        if (this.isOnFire() && !isEnderman) {
+            targetEntity.setSecondsOnFire(5);
+        }
+
+        if (targetEntity.hurt(damagesource, (float) getDamage())) {
+            if (isEnderman) {
+                return;
+            }
+
+            if (targetEntity instanceof LivingEntity) {
+                LivingEntity targetLiving = (LivingEntity) targetEntity;
+                // 处理击退
+                if (this.knockback > 0) {
+                    double d0 = Math.max(0.0D, 1.0D -
+                            targetLiving.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+                    Vec3 vec3 = this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D).normalize()
+                            .scale((double) this.knockback * 0.6D * d0);
+                    if (vec3.lengthSqr() > 0.0D) {
+                        targetLiving.push(vec3.x, 0.1D, vec3.z);
+                    }
+                }
+
+                // 使附魔生效
+                if (!this.level().isClientSide && owner instanceof LivingEntity) {
+                    EnchantmentHelper.doPostHurtEffects(targetLiving, owner);
+                    EnchantmentHelper.doPostDamageEffects((LivingEntity) owner, targetLiving);
+                }
+
+                // 通知客户端
+                if (targetLiving != owner && targetLiving instanceof Player
+                        && owner instanceof ServerPlayer && !this.isSilent()) {
+                    ((ServerPlayer) owner).connection
+                            .send(new ClientboundGameEventPacket(ClientboundGameEventPacket.ARROW_HIT_PLAYER, 0.0F));
+                }
+            }
+
+            this.playSound(getHitEntitySoundEvent(), 1.0F, 1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
+        } else {
+            if (!this.level().isClientSide && this.getDeltaMovement().lengthSqr() < 1.0E-7D) {
+                if (this.pickup == AbstractArrow.Pickup.ALLOWED) {
+                    this.spawnAtLocation(this.getPickupItem(), 0.1F);
+                }
+
+                this.discard();
+            }
+            this.setDeltaMovement(this.getDeltaMovement().scale(-0.1D));
+            this.setYRot(this.getYRot() + 180.0F);
+            this.yRotO += 180.0F;
+        }
+    }
+
+    /**
+     * Same as {@linkplain AbstractArrow#playerTouch}
+     */
+    @Override
+    public void playerTouch(Player pPlayer) {
+        if (!this.level().isClientSide && (this.inGround || this.noPhysics && this.shakeTime <= 0)) {
+            if (this.tryPickup(pPlayer)) {
+                pPlayer.take(this, 1);
+                this.discard();
+            }
+
+        }
+    }
+
+
+    /**
+     * Same as {@linkplain AbstractArrow#tryPickup}
+     */
+    protected boolean tryPickup(Player pPlayer) {
+        switch (this.pickup) {
+            case ALLOWED:
+                return pPlayer.getInventory().add(this.getPickupItem());
+            case CREATIVE_ONLY:
+                return pPlayer.getAbilities().instabuild;
+            default:
+                return false;
+        }
+    }
+
+    protected ItemStack getPickupItem() {
+        return Items.ARROW.getDefaultInstance();
+    }
+
+    public float getKnockback() {
+        return knockback;
+    }
+
+    public void setKnockback(float knockback) {
+        this.knockback = knockback;
     }
 
     protected SoundEvent getHitGroundSoundEvent() {
@@ -238,77 +324,17 @@ public class BaseProjectileEntity extends Projectile {
         return 0;
     }
 
-    @Override
-    protected void onHitEntity(EntityHitResult pResult) {
-        super.onHitEntity(pResult);
-        Entity targetEntity = pResult.getEntity();
-
-        Entity entity1 = this.getOwner();
-        DamageSource damagesource;
-        if (entity1 == null) {
-            //damagesource = this.damageSources().arrow(this, this);
-        } else {
-           // damagesource = this.damageSources().arrow(this, entity1);
-            if (entity1 instanceof LivingEntity) {
-                ((LivingEntity) entity1).setLastHurtMob(targetEntity);
-            }
-        }
-
-        boolean flag = targetEntity.getType() == EntityType.ENDERMAN;
-        int k = targetEntity.getRemainingFireTicks();
-        boolean flag1 = targetEntity.getType().is(EntityTypeTags.DEFLECTS_ARROWS);
-        if (this.isOnFire() && !flag && !flag1) {
-            targetEntity.setSecondsOnFire(5);
-        }
-
-        if (targetEntity.hurt(damagesource, (float) getDamage())) {
-            if (flag) {
-                return;
-            }
-
-            if (targetEntity instanceof LivingEntity) {
-                LivingEntity livingentity = (LivingEntity) targetEntity;
-                /*if (this.knockback > 0) {
-                    double d0 = Math.max(0.0D, 1.0D - livingentity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
-                    Vec3 vec3 = this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D).normalize()
-                            .scale((double) this.knockback * 0.6D * d0);
-                    if (vec3.lengthSqr() > 0.0D) {
-                        livingentity.push(vec3.x, 0.1D, vec3.z);
-                    }
-                }*/
-
-                if (!this.level().isClientSide && entity1 instanceof LivingEntity) {
-                    EnchantmentHelper.doPostHurtEffects(livingentity, entity1);
-                    EnchantmentHelper.doPostDamageEffects((LivingEntity) entity1, livingentity);
-                }
-
-                if (entity1 != null && livingentity != entity1 && livingentity instanceof Player
-                        && entity1 instanceof ServerPlayer && !this.isSilent()) {
-                    ((ServerPlayer) entity1).connection
-                            .send(new ClientboundGameEventPacket(ClientboundGameEventPacket.ARROW_HIT_PLAYER, 0.0F));
-                }
-            }
-
-            this.playSound(getHitEntitySoundEvent(), 1.0F, 1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
-        } else if (flag1) {
-           // this.deflect();
-        } else {
-            targetEntity.setRemainingFireTicks(k);
-            this.setDeltaMovement(this.getDeltaMovement().scale(-0.1D));
-            this.setYRot(this.getYRot() + 180.0F);
-            this.yRotO += 180.0F;
-            if (!this.level().isClientSide && this.getDeltaMovement().lengthSqr() < 1.0E-7D) {
-                if (this.pickup == AbstractArrow.Pickup.ALLOWED) {
-                    this.spawnAtLocation(this.getPickupItem(), 0.1F);
-                }
-
-                this.discard();
-            }
-        }
+    protected float getInteria() {
+        return 0.95F;
     }
 
-    protected ItemStack getPickupItem() {
-        return null;
+    protected float getGravity() {
+        return 0.01F;
+    }
+
+    @Override
+    public boolean isAttackable() {
+        return false;
     }
 
 }
