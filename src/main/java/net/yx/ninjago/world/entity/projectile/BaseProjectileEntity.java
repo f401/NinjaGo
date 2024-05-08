@@ -194,6 +194,9 @@ public class BaseProjectileEntity extends Projectile {
                 (double) (this.random.nextFloat() * 0.2F), (double) (this.random.nextFloat() * 0.2F)));
     }
 
+    /**
+     * Same as {@linkplain AbstractArrow#onHitBlock}
+     */
     @Override
     protected void onHitBlock(BlockHitResult pResult) {
         this.oldBlockState = this.level().getBlockState(pResult.getBlockPos());
@@ -205,9 +208,12 @@ public class BaseProjectileEntity extends Projectile {
         this.playSound(this.getHitGroundSoundEvent(), 1.0F, 1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
         this.inGround = true;
         this.shakeTime = 7;
-
+        // Removed something we didn't use.
     }
 
+    /**
+     * Based on {@linkplain AbstractArrow#onHitEntity}
+     */
     @Override
     protected void onHitEntity(EntityHitResult pResult) {
         super.onHitEntity(pResult);
