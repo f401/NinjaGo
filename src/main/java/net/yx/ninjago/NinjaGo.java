@@ -15,6 +15,7 @@ public class NinjaGo {
 		IEventBus fmlBus = FMLJavaModLoadingContext.get().getModEventBus();
 		ItemRegistry.ITEM_REGISTER.register(fmlBus);
 		CreativeModeTabRegistry.MODE_TAB_REGISTER.register(fmlBus);
+		EntityTypeRegistry.ENTITY_TYPE.register(fmlBus);
         NinjaGoNetwork.init();
 	}
     
