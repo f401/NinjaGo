@@ -31,7 +31,7 @@ public class BoomerangEntity extends BaseProjectileEntity {
 
 	@Override
 	public void tick() {
-		if (this.inGroundTicks > 5 || this.getShootPosition().distanceToSqr(getPosition(1)) > 1024) {
+		if (this.inGroundTime > 5 || this.getShootPosition().distanceToSqr(getPosition(1)) > 1024) {
 			this.dealtDamage = true;
 		}
 
@@ -99,13 +99,13 @@ public class BoomerangEntity extends BaseProjectileEntity {
 	}
 
 	@Override
-	protected void addAdditionalSaveData(CompoundTag pCompound) {
+	public void addAdditionalSaveData(CompoundTag pCompound) {
 		super.addAdditionalSaveData(pCompound);
 		pCompound.put("Boomerang", pickupItem.save(new CompoundTag()));
 	}
 
 	@Override
-	protected void readAdditionalSaveData(CompoundTag pCompound) {
+	public void readAdditionalSaveData(CompoundTag pCompound) {
 		super.readAdditionalSaveData(pCompound);
 		if (pCompound.contains("Bommerang", Tag.TAG_COMPOUND)) {
 			this.pickupItem = ItemStack.of(pCompound.getCompound("Bommerang"));

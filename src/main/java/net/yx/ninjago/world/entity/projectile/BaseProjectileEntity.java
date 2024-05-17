@@ -36,19 +36,12 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class BaseProjectileEntity extends Projectile {
+public class BaseProjectileEntity extends AbstractArrow {
 
-	protected AbstractArrow.Pickup pickup;
 	private Vec3 shootPosition;
-	@Nullable
-	private BlockState oldBlockState;
-
-	private boolean inGround;
-	private int tickDespawn;
 	protected boolean dealtDamage;
-	private float knockback;
-	public int shakeTime;
-	public int inGroundTicks;
+    @Nullable
+    private BlockState oldBlockState;
 
 	public BaseProjectileEntity(EntityType<? extends BaseProjectileEntity> entityType, Level level) {
 		super(entityType, level);
@@ -60,10 +53,7 @@ public class BaseProjectileEntity extends Projectile {
 		this.moveTo(pShooter.getX(), pShooter.getY(), pShooter.getZ(), pShooter.getYRot(), pShooter.getXRot());
 		this.setOwner(pShooter);
 		this.pickup = pShooter.isCreative() ? Pickup.CREATIVE_ONLY : Pickup.ALLOWED;
-		this.inGround = false;
 		this.dealtDamage = false;
-		this.inGroundTicks = 0;
-		this.tickDespawn = 0;
 		this.shootPosition = new Vec3(pShooter.getX(), pShooter.getY(), pShooter.getZ());
 	}
 
@@ -101,7 +91,8 @@ public class BaseProjectileEntity extends Projectile {
 
 	@Override
 	public void tick() {
-		super.tick();
+        this.baseTick();
+
 		Vec3 deltaMovement = this.getDeltaMovement();
 		boolean isNoPhysics = this.noPhysics;// 判断是否要让碰撞框生效
 
@@ -148,28 +139,6 @@ public class BaseProjectileEntity extends Projectile {
 		}
 	}
 
-	/**
-	 * Same as {@linkplain AbstractArrow#playerTouch}
-	 */
-	@Override
-	public void playerTouch(Player pPlayer) {
-		if (!this.level().isClientSide && (this.inGround || this.noPhysics && this.shakeTime <= 0)) {
-			if (this.tryPickup(pPlayer)) {
-				pPlayer.take(this, 1);
-				this.discard();
-			}
-
-		}
-	}
-
-	public float getKnockback() {
-		return knockback;
-	}
-
-	public void setKnockback(float knockback) {
-		this.knockback = knockback;
-	}
-
 	@Override
 	public boolean isAttackable() {
 		return false;
@@ -185,11 +154,11 @@ public class BaseProjectileEntity extends Projectile {
 		} else if (!this.level().isClientSide) {
 			tickDespawn();
 		}
-		++this.inGroundTicks;
+		++this.inGroundTime;
 	}
 
 	protected void tickInAir() {
-		this.inGroundTicks = 0;
+        this.inGroundTime = 0;
 		HitResult hitresult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
 
 		if (hitresult.getType() == HitResult.Type.ENTITY) {
@@ -233,109 +202,19 @@ public class BaseProjectileEntity extends Projectile {
 	}
 
 	/**
-	 * Same as {@linkplain AbstractArrow#onHitBlock}
-	 */
-	@Override
-	protected void onHitBlock(BlockHitResult pResult) {
-		this.oldBlockState = this.level().getBlockState(pResult.getBlockPos());
-		super.onHitBlock(pResult);
-		Vec3 vec3 = pResult.getLocation().subtract(this.getX(), this.getY(), this.getZ());
-		this.setDeltaMovement(vec3);
-		Vec3 vec31 = vec3.normalize().scale((double) 0.05F);
-		this.setPosRaw(this.getX() - vec31.x, this.getY() - vec31.y, this.getZ() - vec31.z);
-		this.playSound(this.getHitGroundSoundEvent(), 1.0F, 1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
-		this.inGround = true;
-		this.shakeTime = 7;
-		// Removed something we didn't use.
-	}
-
-	/**
 	 * Based on {@linkplain AbstractArrow#onHitEntity}
 	 */
 	@Override
 	protected void onHitEntity(EntityHitResult pResult) {
 		super.onHitEntity(pResult);
-		Entity targetEntity = pResult.getEntity();
-		Entity owner = this.getOwner();
-		DamageSource damagesource = damageSources().magic();
-		if (owner instanceof LivingEntity) {
-			((LivingEntity) owner).setLastHurtMob(targetEntity);
-		}
-		this.dealtDamage = true;
-
-		boolean isEnderman = targetEntity.getType() == EntityType.ENDERMAN;
-		if (this.isOnFire() && !isEnderman) {
-			targetEntity.setSecondsOnFire(5);
-		}
-
-		if (targetEntity.hurt(damagesource, (float) getDamage())) {
-			if (isEnderman) {
-				return;
-			}
-
-			if (targetEntity instanceof LivingEntity) {
-				LivingEntity targetLiving = (LivingEntity) targetEntity;
-				// 处理击退
-				if (this.knockback > 0) {
-					double d0 = Math.max(0.0D, 1.0D -
-							targetLiving.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
-					Vec3 vec3 = this.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D).normalize()
-							.scale((double) this.knockback * 0.6D * d0);
-					if (vec3.lengthSqr() > 0.0D) {
-						targetLiving.push(vec3.x, 0.1D, vec3.z);
-					}
-				}
-
-				// 使附魔生效
-				if (!this.level().isClientSide && owner instanceof LivingEntity) {
-					EnchantmentHelper.doPostHurtEffects(targetLiving, owner);
-					EnchantmentHelper.doPostDamageEffects((LivingEntity) owner, targetLiving);
-				}
-
-				// 通知客户端
-				if (targetLiving != owner && targetLiving instanceof Player
-						&& owner instanceof ServerPlayer && !this.isSilent()) {
-					((ServerPlayer) owner).connection
-							.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.ARROW_HIT_PLAYER, 0.0F));
-				}
-			}
-
-			this.playSound(getHitEntitySoundEvent(), 1.0F, 1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
-		} else {
-			if (!this.level().isClientSide && this.getDeltaMovement().lengthSqr() < 1.0E-7D) {
-				if (this.pickup == AbstractArrow.Pickup.ALLOWED) {
-					this.spawnAtLocation(this.getPickupItem(), 0.1F);
-				}
-
-				this.discard();
-			}
-			this.setDeltaMovement(this.getDeltaMovement().scale(-0.1D));
-			this.setYRot(this.getYRot() + 180.0F);
-			this.yRotO += 180.0F;
-		}
+        this.dealtDamage = true;
 	}
 
-	/**
-	 * Same as {@linkplain AbstractArrow#tryPickup}
-	 */
-	protected boolean tryPickup(Player pPlayer) {
-		switch (this.pickup) {
-			case ALLOWED:
-				return pPlayer.getInventory().add(this.getPickupItem());
-			case CREATIVE_ONLY:
-				return pPlayer.getAbilities().instabuild;
-			default:
-				return false;
-		}
-	}
-
-	protected ItemStack getPickupItem() {
-		return Items.ARROW.getDefaultInstance();
-	}
-
-	protected SoundEvent getHitGroundSoundEvent() {
-		return SoundEvents.ARROW_HIT;
-	}
+    @Override
+    protected void onHitBlock(BlockHitResult pResult) {
+        super.onHitBlock(pResult);
+        this.oldBlockState = this.level().getBlockState(pResult.getBlockPos());
+    }
 
 	protected SoundEvent getHitEntitySoundEvent() {
 		return SoundEvents.ARROW_HIT;
@@ -354,9 +233,8 @@ public class BaseProjectileEntity extends Projectile {
 	}
 
 	@Override
-	protected void addAdditionalSaveData(CompoundTag pCompound) {
+	public void addAdditionalSaveData(CompoundTag pCompound) {
 		super.addAdditionalSaveData(pCompound);
-		pCompound.putShort("despawn", (short) this.tickDespawn);
 		if (this.oldBlockState != null) {
 			pCompound.put("inBlockState", NbtUtils.writeBlockState(this.oldBlockState));
 		}
@@ -368,25 +246,14 @@ public class BaseProjectileEntity extends Projectile {
 	}
 
 	@Override
-	protected void readAdditionalSaveData(CompoundTag pCompound) {
+	public void readAdditionalSaveData(CompoundTag pCompound) {
 		super.readAdditionalSaveData(pCompound);
-		this.tickDespawn = pCompound.getShort("despawn");
 		if (pCompound.contains("inBlockState", Tag.TAG_COMPOUND)) {
 			this.oldBlockState = NbtUtils.readBlockState(this.level().holderLookup(Registries.BLOCK),
 					pCompound.getCompound("inBlockState"));
 		}
 
-		this.shakeTime = pCompound.getByte("shake") & 255;
-		this.inGround = pCompound.getBoolean("inGround");
-		this.pickup = AbstractArrow.Pickup.byOrdinal(pCompound.getByte("pickup"));
 		this.dealtDamage = pCompound.getBoolean("dealtDamage");
-	}
-
-	private void tickDespawn() {
-		++this.tickDespawn;
-		if (tickDespawn >= 1200) {
-			this.discard();
-		}
 	}
 
 	private boolean shouldFall() {
