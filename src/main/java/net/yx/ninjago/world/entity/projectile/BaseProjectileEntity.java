@@ -266,4 +266,13 @@ public class BaseProjectileEntity extends AbstractArrow {
 		this.setDeltaMovement(vec3.multiply((double) (this.random.nextFloat() * 0.2F),
 				(double) (this.random.nextFloat() * 0.2F), (double) (this.random.nextFloat() * 0.2F)));
 	}
+
+    @Override
+    protected ItemStack getPickupItem() {
+        return Items.ARROW.getDefaultInstance();
+    }
+
+    public final boolean isInGround() {
+        return this.inGround;
+    }
 }

@@ -17,16 +17,22 @@ public class BoomerangEntity extends BaseProjectileEntity {
 
 	private ItemStack pickupItem = ItemRegistry.BOOMERANG.get().getDefaultInstance();
 
+    // client renderer only
+    public int spin;
+
 	public BoomerangEntity(EntityType<? extends BoomerangEntity> entityType, Level pLevel) {
 		super(entityType, pLevel);
+        this.spin = 0;
 	}
 
 	public BoomerangEntity(Level pLevel, Player shooter) {
 		super(EntityTypeRegistry.BOOMERANG.get(), pLevel, shooter);
+        this.spin = 0;
 	}
 
 	public BoomerangEntity(Level pLevel, Player shooter, float speed, float inc) {
 		super(EntityTypeRegistry.BOOMERANG.get(), pLevel, shooter, speed, inc);
+        this.spin = 0;
 	}
 
 	@Override

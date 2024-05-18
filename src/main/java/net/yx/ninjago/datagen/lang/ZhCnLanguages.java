@@ -21,5 +21,6 @@ public class ZhCnLanguages extends LanguageProvider {
 		LOGGER.info("Adding Chinese Translations");
 		add(ItemRegistry.LONG_SWORD.get(), "长剑");
 		add(ItemRegistry.HEAVY_HAMMAR.get(), "重锤");
+        add(ItemRegistry.BOOMERANG.get(), "飞镖");
 	}
 }
