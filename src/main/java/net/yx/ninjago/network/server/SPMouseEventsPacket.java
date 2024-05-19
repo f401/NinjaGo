@@ -1,5 +1,8 @@
 package net.yx.ninjago.network.server;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.network.CustomPayloadEvent.Context;
@@ -15,6 +18,8 @@ import net.yx.ninjago.event.ServerMouseEvent;
  * @see InputEventListener
  */
 public class SPMouseEventsPacket {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private final MouseButtons btn;
 
     public SPMouseEventsPacket(FriendlyByteBuf buff) {
@@ -31,6 +36,7 @@ public class SPMouseEventsPacket {
 
     public static void handle(SPMouseEventsPacket thiz, final Context context) {
         context.enqueueWork(() -> { 
+            LOGGER.info("Post ServerMouseEvent");
             MinecraftForge.EVENT_BUS.post(new ServerMouseEvent(thiz.getButtons(), context.getSender()));
             context.setPacketHandled(true);
         });

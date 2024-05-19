@@ -1,5 +1,8 @@
 package net.yx.ninjago.event;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.InputEvent;
@@ -11,6 +14,8 @@ import net.yx.ninjago.network.server.SPMouseEventsPacket;
 
 @Mod.EventBusSubscriber(value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class InputEventListener {
+
+    private static final Logger LOGGER = LogManager.getLogger();
     
     @OnlyIn(Dist.CLIENT)
     @SubscribeEvent
@@ -27,6 +32,8 @@ public class InputEventListener {
         if (event.isUseItem()) {
             value |= MouseButtons.RIGHT;
         }
+
+        LOGGER.info("Client Trigged Mouse event, sending to server");
 
         NinjaGoNetwork.sendToServer(new SPMouseEventsPacket(MouseButtons.of(value)));
     }
