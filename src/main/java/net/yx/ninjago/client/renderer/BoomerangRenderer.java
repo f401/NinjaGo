@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider.Context;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.yx.ninjago.NinjaGo;
 import net.yx.ninjago.client.model.BoomerangModel;
 import net.yx.ninjago.world.entity.projectile.BoomerangEntity;
 
@@ -27,7 +28,7 @@ public class BoomerangRenderer extends EntityRenderer<BoomerangEntity> {
 
     @Override
     public ResourceLocation getTextureLocation(BoomerangEntity pEntity) {
-        return new ResourceLocation("textures/item/boomerang.png");
+        return new ResourceLocation(NinjaGo.MOD_ID, "textures/item/boomerang.png");
     }
 
     @Override
